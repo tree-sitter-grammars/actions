@@ -14,10 +14,20 @@ inputs:
   test-library:
     description: Test the rust library
     default: 'false'
+  examples:
+    description: Glob patterns of example files to parse
 
 runs:
   using: composite
   steps:
+    - name: Add node modules to PATH
+      shell: sh
+      run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
+    - name: Configure tree-sitter
+      shell: bash
+      run: |-
+        config="$(tree-sitter init-config | cut -c32- | tr '\\' '/')"
+        printf '{"parser-directories":["%q"]}' "$(dirname "$GITHUB_WORKSPACE")" > "$config"
     - name: Lint
       if: inputs.lint == 'true'
       shell: sh
@@ -36,4 +46,16 @@ runs:
     - name: Run library tests
       if: inputs.test-library == 'true'
       shell: sh
-      run: cargo test
+      run: cargo test -q --no-fail-fast
+    - name: Parse examples
+      uses: tree-sitter-grammars/tree-sitter-examples-action@v1
+      id: examples
+      if: inputs.examples != ''
+      with:
+        examples: ${{inputs.examples}}
+    - name: Upload failures artifact
+      uses: actions/upload-artifact@v4
+      if: failure() && steps.examples.outcome == 'failure'
+      with:
+        name: failures-${{runner.os}}
+        path: ${{steps.examples.outputs.failures}}

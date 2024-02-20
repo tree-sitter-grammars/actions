@@ -17,6 +17,8 @@ test-grammar:
 test-library:
   description: Test the rust library
   default: 'false'
+examples:
+  description: Glob patterns of example files to parse
 ```
 
 ### Example configuration
@@ -54,6 +56,7 @@ jobs:
       - uses: tree-sitter-grammars/actions/test@main
         with:
           test-library: true
+          examples: examples/*
 ```
 
 ## update
@@ -104,3 +107,7 @@ jobs:
 ## fuzz
 
 See [tree-sitter-grammars/tree-sitter-fuzz-action](https://github.com/tree-sitter-grammars/tree-sitter-fuzz-action)
+
+## examples
+
+See [tree-sitter-grammars/tree-sitter-examples-action](https://github.com/tree-sitter-grammars/tree-sitter-examples-action)
