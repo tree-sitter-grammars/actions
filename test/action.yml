@@ -1,0 +1,39 @@
+name: Tree-sitter test action
+description: Run tree-sitter tests
+
+inputs:
+  lint:
+    description: Lint
+    default: 'false'
+  generate:
+    description: Verify generated parser
+    default: 'false'
+  test-grammar:
+    description: Test the grammar
+    default: 'true'
+  test-library:
+    description: Test the rust library
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Lint
+      if: inputs.lint == 'true'
+      shell: sh
+      run: npm run lint
+    - name: Verify generated parser
+      if: inputs.generate == 'true'
+      continue-on-error: true
+      shell: sh
+      run: |-
+        tree-sitter generate --no-bindings
+        git diff --exit-code -- src/parser.c
+    - name: Run grammar tests
+      if: inputs.test-grammar == 'true'
+      shell: sh
+      run: npm test
+    - name: Run library tests
+      if: inputs.test-library == 'true'
+      shell: sh
+      run: cargo test

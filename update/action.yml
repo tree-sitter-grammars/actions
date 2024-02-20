@@ -1,0 +1,68 @@
+name: Tree-sitter update action
+description: Update tree-sitter parser dependencies
+
+inputs:
+  parent-name:
+    description: The parent language name (for scanner updates)
+  language-name:
+    description: The current language name (for scanner updates)
+  pr-branch:
+    description: The name of the PR branch
+    default: update-parser-pr
+  jq-script:
+    description: The jq script that generates the PR body
+    default: |-
+      .packages | to_entries | del(.[0])[] |
+        "- [`\(.key[13:])@\(.value.version)`]" +
+        "(https://www.npmjs.com/package/\(.key[13:])/v/\(.value.version))"
+
+runs:
+  using: composite
+  steps:
+    - name: Update dependencies
+      shell: sh
+      run: npm update
+    - name: Update scanner
+      if: inputs.parent-name != ''
+      shell: sh
+      run: |-
+        sed 'node_modules/tree-sitter-${{inputs.parent-name}}/src/scanner.c' \
+          -e 's/${{inputs.parent-name}}/${{inputs.language-name}}/g' > src/scanner.c
+        changes="$(git diff --exit-code -- src/scanner.c)"
+        if (($? -eq 1)); then
+          printf '## Scanner changes\n\n```diff\n%s\n```\n' "$changes" >> "$GITHUB_SUMMARY"
+        fi
+    - name: Install dependencies
+      shell: sh
+      run: npm install
+    - name: Generate parser
+      shell: sh
+      run: node_modules/.bin/tree-sitter generate --no-bindings
+    - name: Run tests
+      shell: sh
+      run: npm test
+    - name: Check package versions
+      id: versions
+      shell: sh
+      run: |-
+        packages="$(jq -r '${{inputs.jq-script}}' package-lock.json)"
+        printf '\n## Package versions\n\n%s\n' "$packages" >> "$GITHUB_SUMMARY"
+        printf 'pr_body<<EOF\n%s\nEOF\n' >> "$GITHUB_OUTPUT" "$packages"
+    - name: Commit changes
+      id: auto_commit
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: "chore(deps): update & regenerate parser"
+        commit_author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+        branch: ${{inputs.pr-branch}}
+        create_branch: true
+        skip_checkout: true
+        skip_fetch: true
+    - name: Create pull request
+      uses: peter-evans/create-pull-request@v5
+      if: steps.outputs.auto_commit.changes_detected == 'true'
+      with:
+        title: "chore(deps): update & regenerate parser"
+        body: ${{steps.outputs.versions.pr_body}}
+        branch: ${{inputs.pr-branch}}
+        delete-branch: true
