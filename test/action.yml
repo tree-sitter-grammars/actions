@@ -20,14 +20,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Add node modules to PATH
-      shell: sh
-      run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
-    - name: Configure tree-sitter
-      shell: bash
-      run: |-
-        config="$(tree-sitter init-config | cut -c32- | tr '\\' '/')"
-        printf '{"parser-directories":["%q"]}' "$(dirname "$GITHUB_WORKSPACE")" > "$config"
     - name: Lint
       if: inputs.lint == 'true'
       shell: sh

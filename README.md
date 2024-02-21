@@ -1,5 +1,22 @@
 # Actions for tree-sitter grammars
 
+## setup
+
+### Options
+
+```yaml
+submodules:
+  description: Initialize submodules
+  default: 'false'
+node-version:
+  description: The NodeJS version
+  required: true
+```
+
+### Example configuration
+
+See [below](#example-configuration-1)
+
 ## test
 
 ### Options
@@ -46,13 +63,9 @@ jobs:
     name: Run tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: tree-sitter-grammars/actions/setup@main
         with:
-          cache: npm
-      - uses: actions-rust-lang/setup-rust-toolchain@v1.8
-      - run: npm ci
-      - run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
+          node-version: 20
       - uses: tree-sitter-grammars/actions/test@main
         with:
           test-library: true
