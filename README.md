@@ -5,6 +5,9 @@
 ### Options
 
 ```yaml
+depth:
+  description: Fetch depth
+  default: '2'
 submodules:
   description: Initialize submodules
   default: 'false'

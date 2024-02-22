@@ -2,9 +2,12 @@ name: Tree-sitter setup action
 description: Set up parser repo CI
 
 inputs:
+  depth:
+    description: Fetch depth
+    default: "2"
   submodules:
     description: Initialize submodules
-    default: 'false'
+    default: "false"
   node-version:
     description: The NodeJS version
     required: true
@@ -15,6 +18,7 @@ runs:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
+        fetch-depth: ${{inputs.depth}}
         submodules: ${{inputs.submodules}}
     - name: Set up NodeJS
       uses: actions/setup-node@v4
