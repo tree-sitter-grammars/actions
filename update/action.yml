@@ -9,60 +9,69 @@ inputs:
   pr-branch:
     description: The name of the PR branch
     default: update-parser-pr
-  jq-script:
-    description: The jq script that generates the PR body
+  script-body:
+    description: The JS function body that returns package links
     default: |-
-      .packages | to_entries | del(.[0])[] |
-        "- [`\(.key[13:])@\(.value.version)`]" +
-        "(https://www.npmjs.com/package/\(.key[13:])/v/\(.value.version))"
+      return this.map(([key, value]) => {
+        const name = key.substring(13), version = value.version;
+        return `- [${name}@${version}](https://www.npmjs.com/package/${name}/v/${version})`;
+      }).join('\n');
 
 runs:
   using: composite
   steps:
     - name: Update dependencies
+      uses: actions/github-script@v7
+      id: update
+      with:
+        result-encoding: string
+        script: |-
+          const { readFileSync, writeFileSync } = require('node:fs');
+          function getBody() {
+            const { packages } = JSON.parse(readFileSync('package-lock.json', 'utf8'));
+            const entries = Object.entries(packages).slice(1);
+            return (function() { ${{inputs.script-body}} }).call(entries);
+          }
+
+          core.summary.addRaw('## Old versions', true);
+          core.summary.addRaw(getBody(), true).addEOL();
+          await core.summary.write();
+          await exec.exec('npm', ['update'])
+
+          const body = getBody();
+          core.summary.addRaw('## New versions', true);
+          core.summary.addRaw(body, true).addEOL();
+          await core.summary.write();
+          return body;
+    - name: Regenerate the parser
       shell: sh
-      run: npm update
-    - name: Update scanner
+      run: node_modules/.bin/tree-sitter generate --no-bindings
+    - name: Update the scanner
       if: inputs.parent-name != ''
       shell: sh
       run: |-
-        sed 'node_modules/tree-sitter-${{inputs.parent-name}}/src/scanner.c' \
-          -e 's/${{inputs.parent-name}}/${{inputs.language-name}}/g' > src/scanner.c
-        changes="$(git diff --exit-code -- src/scanner.c)"
-        if (($? -eq 1)); then
-          printf '## Scanner changes\n\n```diff\n%s\n```\n' "$changes" >> "$GITHUB_SUMMARY"
-        fi
-    - name: Install dependencies
-      shell: sh
-      run: npm install
-    - name: Generate parser
-      shell: sh
-      run: node_modules/.bin/tree-sitter generate --no-bindings
-    - name: Run tests
-      shell: sh
-      run: npm test
-    - name: Check package versions
-      id: versions
-      shell: sh
-      run: |-
-        packages="$(jq -r '${{inputs.jq-script}}' package-lock.json)"
-        printf '\n## Package versions\n\n%s\n' "$packages" >> "$GITHUB_SUMMARY"
-        printf 'pr_body<<EOF\n%s\nEOF\n' >> "$GITHUB_OUTPUT" "$packages"
+        sed 's/tree_sitter_${{inputs.parent-name}}_/tree_sitter_${{inputs.language-name}}_/' \
+          'node_modules/tree-sitter-${{inputs.parent-name}}/src/scanner.c' > src/scanner.c
+        git diff -- src/scanner.c
     - name: Commit changes
-      id: auto_commit
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
-        commit_message: "chore(deps): update & regenerate parser"
-        commit_author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+        commit_message: "build: update & regenerate parser"
+        commit_author: >-
+          github-actions[bot]
+          <41898282+github-actions[bot]@users.noreply.github.com>
         branch: ${{inputs.pr-branch}}
         create_branch: true
         skip_checkout: true
         skip_fetch: true
     - name: Create pull request
-      uses: peter-evans/create-pull-request@v5
-      if: steps.outputs.auto_commit.changes_detected == 'true'
+      uses: peter-evans/create-pull-request@v6
       with:
-        title: "chore(deps): update & regenerate parser"
-        body: ${{steps.outputs.versions.pr_body}}
+        title: "build: update & regenerate parser"
+        author: >-
+          github-actions[bot]
+          <41898282+github-actions[bot]@users.noreply.github.com>
+        body: ${{steps.update.outputs.result}}
+        base: ${{github.event.repository.default_branch}}
         branch: ${{inputs.pr-branch}}
         delete-branch: true

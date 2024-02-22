@@ -84,12 +84,13 @@ language-name:
 pr-branch:
   description: The name of the PR branch
   default: update-parser-pr
-jq-script:
-  description: The jq script that generates the PR body
+script-body:
+  description: The JS function body that returns package links
   default: |-
-    .packages | to_entries | del(.[0])[] |
-      "- [`\(.key[13:])@\(.value.version)`]" +
-      "(https://www.npmjs.com/package/\(.key[13:])/v/\(.value.version))"
+    return this.map(([key, value]) => {
+      const name = key.substring(13), version = value.version;
+      return `- [${name}@${version}](https://www.npmjs.com/package/${name}/v/${version})`;
+    }).join('\n');
 ```
 
 ### Example configuration
@@ -101,6 +102,10 @@ on:
   schedule:
     - cron: '0 0 * * 0'
   workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
   test:
