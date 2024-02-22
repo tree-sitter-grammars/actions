@@ -7,10 +7,10 @@
 ```yaml
 depth:
   description: Fetch depth
-  default: '2'
+  default: "2"
 submodules:
   description: Initialize submodules
-  default: 'false'
+  default: "false"
 node-version:
   description: The NodeJS version
   required: true
@@ -27,16 +27,16 @@ See [below](#example-configuration-1)
 ```yaml
 lint:
   description: Lint
-  default: 'false'
+  default: "false"
 generate:
   description: Verify generated parser
-  default: 'false'
+  default: "false"
 test-grammar:
   description: Test the grammar
-  default: 'true'
+  default: "true"
 test-library:
   description: Test the rust library
-  default: 'false'
+  default: "false"
 examples:
   description: Glob patterns of example files to parse
 ```
@@ -103,7 +103,7 @@ name: Update
 
 on:
   schedule:
-    - cron: '0 0 * * 0'
+    - cron: "0 0 * * 0"
   workflow_dispatch:
 
 permissions:

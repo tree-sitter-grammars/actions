@@ -4,16 +4,16 @@ description: Run tree-sitter tests
 inputs:
   lint:
     description: Lint
-    default: 'false'
+    default: "false"
   generate:
     description: Verify generated parser
-    default: 'false'
+    default: "false"
   test-grammar:
     description: Test the grammar
-    default: 'true'
+    default: "true"
   test-library:
     description: Test the rust library
-    default: 'false'
+    default: "false"
   examples:
     description: Glob patterns of example files to parse
 
@@ -42,12 +42,13 @@ runs:
     - name: Parse examples
       uses: tree-sitter-grammars/tree-sitter-examples-action@v1
       id: examples
+      continue-on-error: ${{runner.os == 'Windows'}}
       if: inputs.examples != ''
       with:
         examples: ${{inputs.examples}}
     - name: Upload failures artifact
       uses: actions/upload-artifact@v4
-      if: failure() && steps.examples.outcome == 'failure'
+      if: "!cancelled() && steps.examples.outcome == 'failure'"
       with:
         name: failures-${{runner.os}}
         path: ${{steps.examples.outputs.failures}}
