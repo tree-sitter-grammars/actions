@@ -87,13 +87,6 @@ language-name:
 pr-branch:
   description: The name of the PR branch
   default: update-parser-pr
-script-body:
-  description: The JS function body that returns package links
-  default: |-
-    return this.map(([key, value]) => {
-      const name = key.substring(13), version = value.version;
-      return `- [${name}@${version}](https://www.npmjs.com/package/${name}/v/${version})`;
-    }).join('\n');
 ```
 
 ### Example configuration
